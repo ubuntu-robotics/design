@@ -78,7 +78,7 @@ Such assertions could include:
 - Check for multiple publishers on a single topic.
 - Check for message type mismatch.
 - Check for qos mismatch.
-- Check for orphan connections (i.e. a listener is connected to a topic with no publisher).
+- Check for orphan connections (e.g. a listener is connected to a topic with no publisher).
 - Determine if remappings are incorrect.
 - Determine if parameter names are incorrect.
 
