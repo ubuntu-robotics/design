@@ -73,7 +73,7 @@ Outside of security, there are several fascinating possibilities unlocked by hav
 
 For example, consider how this could impact [ROS 2 launch][launch_ros].
 Benefiting from the declared interface(s), it would be able to execute many kind of static assertions (i.e. at launch-time, before running anything) upon the whole system to be launched.
-Such assertions are e.g.:
+Such assertions could include:
 - Check for duplicates.
 - Check for multiple publishers on a single topic.
 - Check for message type mismatch.
