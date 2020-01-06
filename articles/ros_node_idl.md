@@ -72,7 +72,7 @@ If ROS 2 provided a way for upstream package authors to specify the interface re
 Outside of security, there are several fascinating possibilities unlocked by having such an interface.
 
 For example, consider how this could impact [ROS 2 launch][launch_ros].
-Benefiting from the declared interface(s), it would be able to execute many kind of static asserts (i.e. at launch-time, before running anything) upon the whole system to be launched.
+Benefiting from the declared interface(s), it would be able to execute many kind of static assertions (i.e. at launch-time, before running anything) upon the whole system to be launched.
 Such assertions are e.g.:
 - Check for duplicates.
 - Check for multiple publishers on a single topic.
