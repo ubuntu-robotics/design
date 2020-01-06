@@ -113,36 +113,26 @@ Another is the fact that, as soon as the node is running, RCL itself (or another
 How do upstream packages specify their interface requirements?
 Through a high-level description of all the actions, parameters, services and topics, provided or required, by each node within the package.
 
-The package interface is defined in a separate [XML][xml_wiki] file and exported from the `package.xml` using [REP 149's export mechanism][rep149_export], thereby avoiding pollution of the package manifest.
+The package interface is defined in a separate [XML][xml_wiki] file, thereby avoiding pollution of the package manifest.
+The XML file is exported from the package's `CMakeLists.txt` file, or from the `setup.py` file for a Python package.
+The export is supported by a `CMake` macro, `nodl_export_interface_description_file`, which installs the file to the current package's share folder as well as installs the required `ament` index resources needed for the interface description to be discovered later.
+
 The interface may cover only a subset of nodes in a package, as long as the nodes that _are_ covered are done so completely.
+Note that several IDL files can be exported, allowing for writing an IDL file per node.
+However the interface of a given node **can not** be split across several IDL files.
+If a given node appears several times, be it in one or several files, this will results in an error.
 
 Here is an example IDL for a package containing two nodes:
 
 {% include_relative ros2_node_idl/interface_declaration.xml %}
 
-Once an IDL file is written, it is exported from the package manifest:
+Once an IDL file is written, it is exported from the `CMakeLists.txt`:
 
-{% include_relative ros2_node_idl/package.xml %}
+{% include_relative ros2_node_idl/CMakeLists.txt %}
 
-Note that several IDL files can be exported, allowing for writing an IDL file per node.
+Similarly, for a Python package it is exported from the `setup.py` file:
 
-### Schema for `package.xml`'s export tag
-
-#### `interface`
-
-This is how the package exports its defined IDL for other tools to consume.
-
-Attributes:
-
-**path**:  Path to XML file containing IDL
-
-Note that the introduction of the `interface` tag within the `export` tag of the package manifest raises a small difficulty with regards to the [REP 149][rep149_export].
-The REP specifies:
-
-> To avoid potential collisions, an export tag should have the same name as the package which is meant to process it. The content of that tag is up to the package to define and use.
-
-Considering the high level abstraction of the IDL, the `interface` tag is not meant for a specific package but rather declares intrinsic properties for anyone to process it.
-However, the keyword is likely solidly descriptive enough to either be accepted as falling under [REP 149][rep149_export] or else to motivate an amendment of the REP.
+{% include_relative ros2_node_idl/setup.py %}
 
 ### IDL Schema
 
