@@ -115,7 +115,7 @@ Through a high-level description of all the actions, parameters, services and to
 
 The package interface is defined in a separate [XML][xml_wiki] file, thereby avoiding pollution of the package manifest.
 The XML file is exported from the package's `CMakeLists.txt` file, or from the `setup.py` file for a Python package.
-The export is supported by a `CMake` macro, `nodl_export_interface_description_file`, which installs the file to the current package's share folder as well as installs the required `ament` index resources needed for the interface description to be discovered later.
+The export is supported by a `CMake` macro, `nodl_export_node_description_file`, which installs the file to the current package's share folder as well as installs the required `ament` index resources needed for the interface description to be discovered later.
 
 The interface may cover only a subset of nodes in a package, as long as the nodes that _are_ covered are done so completely.
 Note that several IDL files can be exported, allowing for writing an IDL file per node.
