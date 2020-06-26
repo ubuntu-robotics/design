@@ -7,6 +7,7 @@ abstract:
 author: >
   [Jérémie Deray](https://github.com/artivis),
   [Kyle Fazzari](https://github.com/kyrofa)
+  [Ted Kern](https://github.com/arnatious)
 published: true
 categories: Interfaces
 ---
@@ -38,13 +39,16 @@ While it is usually readily available to a developer looking at the code, it can
 It therefore calls for the creation of a standardized way to explicitly define and export this information.
 
 This article defines a high-level abstraction allowing upstream packages to specify the communication requirements of the nodes in the package, such that the final user, be it a developer or a static analysis tool, can benefit from it.
-The Interface Definition Language (IDL) specified in the next section is meant to be distributed alongside its associated package, be it in the source code or a generated release packaging format (e.g. debian).
-Whether the interface is declared or not is up to the package author and should not prevent the correct execution of any system pre-existing the IDL.
+
+The Node Definition Language (NoDL) specified in the next section is meant to be distributed alongside its associated package, be it in the source code or a generated release packaging format (e.g. debian).
+
+Whether the interface is declared or not is up to the package author and should not prevent the correct execution of any system pre-existing the NoDL.
+
 Similarly, the declared interface may be only partial and allow for the full use of pre-existing systems and the use of dependent systems on the parts covered by the partial interface.
 
 ## Motivation
 
-While initially being approached from a ROS 2 Security perspective, the abstraction level of the IDL allows for the developments of other functionalities and tools.
+While initially being approached from a ROS 2 Security perspective, the abstraction level of the NoDL allows for the developments of other functionalities and tools.
 
 ### Security motivation
 
@@ -72,7 +76,9 @@ If ROS 2 provided a way for upstream package authors to specify the interface re
 Outside of security, there are several fascinating possibilities unlocked by having such an interface.
 
 For example, consider how this could impact [ROS 2 launch][launch_ros].
+
 Benefiting from the declared interface(s), it would be able to execute many kind of static assertions (i.e. at launch-time, before running anything) upon the whole system to be launched.
+
 Such assertions could include:
 - Check for duplicates.
 - Check for multiple publishers on a single topic.
@@ -85,7 +91,8 @@ Such assertions could include:
 These assertions results would then be summarized in a logging file for later debugging.
 
 Another example of the usefulness of having a static interface is the ability to create graphical tools for putting a ROS system together.
-Yet another example would be an additional feature in `ros2 pkg create` that would allow a developer to hand it an IDL and have it generate scaffolding for a node with that interface.
+
+Yet another example would be an additional feature in `ros2 pkg create` that would allow a developer to hand it an NoDL and have it generate scaffolding for a node with that interface.
 
 These examples are only a subset of use-cases made possible by such an interface.
 It's clear that this is useful well beyond security.
@@ -97,59 +104,128 @@ This proposal has a number of potential upsides, but it also has some downsides 
 ### This is only really useful if it gains significant adoption in upstream packages
 
 It's true that, if not all of the packages in one's system have adopted this, its gains are incomplete.
+
 However, it's still useful even if only a subset of the packages adopt it (e.g. one's own packages), which means even without significant upstream adoption it will still be useful to individuals or organizations.
+
 Upstream packages that haven't adopted this simply won't benefit from it.
+
 Also, its usefulness hopefully outweighs the work required to implement it upstream, and it's certainly something that can be contributed by community members given that the interface would be reviewed by the experts in the package.
 
 ### Declared and actual interface can get out of sync
 
 This is certainly a concern: an out-of-date interface is debatably less useful than having no interface at all.
+
 There are a number of possibilities that will help with this issue.
+
 One possibility is to more tightly couple the declared and actual interface by creating a library that consumes the declared interface and creates the corresponding ROS entities.
+
 Another is the fact that, as soon as the node is running, RCL itself (or another `ros2` command) can verify that the actual interface properly corresponds to the declared interface, and can act appropriately.
 
 ## Package interface
 
 How do upstream packages specify their interface requirements?
+
 Through a high-level description of all the actions, parameters, services and topics, provided or required, by each node within the package.
 
-The package interface is defined in a separate [XML][xml_wiki] file and exported from the `package.xml` using [REP 149's export mechanism][rep149_export], thereby avoiding pollution of the package manifest.
+The package interface is defined in a separate [XML][xml_wiki] file with suffix `.nodl.xml`. This XML file is exported to the [ament index][ament_index], either manually in the case of python projects or with a helper CMake macro.
+
 The interface may cover only a subset of nodes in a package, as long as the nodes that _are_ covered are done so completely.
 
-Here is an example IDL for a package containing two nodes:
+Here is an example NoDL for a package containing two nodes:
 
-{% include_relative ros2_node_idl/interface_declaration.xml %}
+{% include_relative ros2_nodl/interface_declaration.xml %}
 
-Once an IDL file is written, it is exported from the package manifest:
 
-{% include_relative ros2_node_idl/package.xml %}
+Once an NoDL file is written, it is exported from either `CMakeLists.txt` or `setup.py`.
 
-Note that several IDL files can be exported, allowing for writing an IDL file per node.
+For CMake based builds, the package [`ament_nodl`](https://github.com/ubuntu-robotics/ament_nodl) will provide a a macro `nodl_export_node_description_file()`. That installs the two relevan
 
-### Schema for `package.xml`'s export tag
+{% include_relative ros2_nodl/package.xml %}
+
+Note that several NoDL files can be exported, allowing for writing an NoDL file per node.
+
+### Exporting a NoDL to the Ament Index
+
+Per the design philosophy of the [ament index][ament_index], we install files in two locations. In the case of a package named `Foo`, we export our NoDL file `foo.nodl.xml` into the package share directory, `share/foo/foo.nodl.xml`. We then place a marker file, `share/ament_index/nodl_desc/foo`. This is either empty or contains the relative path to the `foo.nodl.xml` file.
+
+#### CMake Macro
+
+For packages using ament_cmake, the package `ament_nodl` provides the macro `nodl_export_node_description_file` which performs the above for you.
+
+#### setup.py
+
+In the case of setup.py, the above must be done manually alongside the placement of the package's marker in the ament index.
+
+### NoDL Schema
+
+An `.xsd` xml schema is provided alongside the NoDL implementation, version 1 of which is displayed below
+
+```xml
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+    <xs:element name="action">
+        <xs:complexType>
+            <xs:attribute name="name" type="xs:string" use="required" />
+            <xs:attribute name="type" type="xs:string" use="required" />
+            <xs:attribute name="server" type="xs:boolean" default="false" />
+            <xs:attribute name="client" type="xs:boolean" default="false" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="parameter">
+        <xs:complexType>
+            <xs:attribute name="name" type="xs:string" use="required" />
+            <xs:attribute name="type" type="xs:string" use="required" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="service">
+        <xs:complexType>
+            <xs:attribute name="name" type="xs:string" use="required" />
+            <xs:attribute name="type" type="xs:string" use="required" />
+            <xs:attribute name="server" type="xs:boolean" default="false" />
+            <xs:attribute name="client" type="xs:boolean" default="false" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="topic">
+        <xs:complexType>
+            <xs:attribute name="name" type="xs:string" use="required" />
+            <xs:attribute name="type" type="xs:string" use="required" />
+            <xs:attribute name="publisher" type="xs:boolean" default="false" />
+            <xs:attribute name="subscription" type="xs:boolean" default="false" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="node">
+        <xs:complexType>
+            <xs:choice minOccurs="1" maxOccurs="unbounded">
+                <xs:element ref="action" />
+                <xs:element ref="parameter" />
+                <xs:element ref="topic" />
+                <xs:element ref="service" />
+            </xs:choice>
+            <xs:attribute name="name" type="xs:string" use="required" />
+            <xs:attribute name="executable" type="xs:string" use="required" />
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="interface">
+        <xs:complexType>
+            <xs:choice maxOccurs="unbounded">
+                <xs:element ref="node"></xs:element>
+            </xs:choice>
+            <xs:attribute name="version" fixed="1" use="required" />
+        </xs:complexType>
+    </xs:element>
+</xs:schema>
+```
 
 #### `interface`
 
-This is how the package exports its defined IDL for other tools to consume.
-
-Attributes:
-
-**path**:  Path to XML file containing IDL
-
-Note that the introduction of the `interface` tag within the `export` tag of the package manifest raises a small difficulty with regards to the [REP 149][rep149_export].
-The REP specifies:
-
-> To avoid potential collisions, an export tag should have the same name as the package which is meant to process it. The content of that tag is up to the package to define and use.
-
-Considering the high level abstraction of the IDL, the `interface` tag is not meant for a specific package but rather declares intrinsic properties for anyone to process it.
-However, the keyword is likely solidly descriptive enough to either be accepted as falling under [REP 149][rep149_export] or else to motivate an amendment of the REP.
-
-### IDL Schema
-
-#### `interface`
-
-Root tag of the IDL file, it is made up of a collection of node interfaces.
-There must be only one tag per IDL file.
+Root tag of the NoDL file, it is made up of a collection of node interfaces.
+There must be only one tag per NoDL file.
 
 Attributes:
 - **version**: version of schema in use, allowing for future revisions.
@@ -161,6 +237,7 @@ It is specific to a node as determined by its associated attributes.
 
 Attributes:
 - **name**: The base name of the node.
+- **executable**: The name of the generated executable the node is contained in.
 
 #### `action`
 
@@ -174,10 +251,6 @@ Valid values are any ROS action types.
 Valid values are "true" or "false". Defaults to "false".
 - **client**: Whether or not the node provides a client for the action.
 Valid values are "true" or "false". Defaults to "false".
-
-Sub-tag:
-- **qos**: The Quality of Service setting for the action - see the [qos tag](####qos).
-Defaults to [rcl_action_qos_profile_status_default][rcl_action_qos_profile_status_default_link]
 
 #### `parameter`
 
@@ -201,10 +274,6 @@ Valid values are "true" or "false". Defaults to "false".
 - **client**: Whether or not the node provides a client for the service.
 Valid values are "true" or "false". Defaults to "false".
 
-Sub-tag:
-- **qos**: The Quality of Service setting for the service - see the [qos tag](####qos).
-Defaults to [rmw_qos_profile_services_default][rmw_qos_profile_services_default_link]
-
 #### `topic`
 
 Define the interface for a given topic.
@@ -218,32 +287,9 @@ Valid values are "true" or "false". Defaults to "false".
 - **subscription**: Whether or not the node subscribes to the topic.
 Valid values are "true" or "false". Defaults to "false".
 
-Sub-tag:
-- **qos**: The Quality of Service setting for the topic - see the [qos tag](####qos).
-Defaults to [rmw_qos_profile_default][rmw_qos_profile_default_link]
-
-#### `qos`
-
-Define the quality of service. It reflects the qos parameters of the [rmw_qos_profile_t][rmw_qos_profile_t] structure.  
-This tag is a sub-element of either an action, a service or a topic.
-
-Attributes:
-- **history**: The size of the message queue.
-- **reliability**: The reliability QoS policy setting.
-- **durability**: The durability QoS policy setting.
-- **deadline**: The period at which messages are expected to be sent/received.
-- **lifespan**: The age at which messages are considered expired and no longer valid.
-- **liveliness**: Liveliness QoS policy setting.
-- **liveliness_lease_duration**: The time within which the RMW node or publisher must show that it is alive.
-- **avoid_ros_namespace_conventions**: If true, any ROS specific namespacing conventions will be circumvented.
-
 
 [dds_security]: https://www.omg.org/spec/DDS-SECURITY/1.1/PDF
 [sros2_design]: /articles/ros2_dds_security.html
 [launch_ros]: https://github.com/ros2/launch_ros
 [xml_wiki]: https://en.wikipedia.org/wiki/xml
-[rep149_export]: http://www.ros.org/reps/rep-0149.html#export
-[rcl_action_qos_profile_status_default_link]: https://github.com/ros2/rcl/blob/master/rcl_action/include/rcl_action/default_qos.h
-[rmw_qos_profile_services_default_link]: https://github.com/ros2/rmw/blob/master/rmw/include/rmw/qos_profiles.h#L64
-[rmw_qos_profile_default_link]: https://github.com/ros2/rmw/blob/master/rmw/include/rmw/qos_profiles.h#L51
-[rmw_qos_profile_t]: https://github.com/ros2/rmw/blob/master/rmw/include/rmw/types.h#L299
+[ament_index]: https://github.com/ament/ament_cmake/blob/master/ament_cmake_core/doc/resource_index.md#integration-with-other-systems
