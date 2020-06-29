@@ -1,9 +1,9 @@
 ---
 layout: default
-title: ROS 2 Node Interface Definition Language
-permalink: articles/ros2_node_interface_definition_language.html
+title: ROS 2 Node Definition Language
+permalink: articles/ros2_node_definition_language.html
 abstract:
-  This article specifies the ROS 2 Interface Definition Language, a simple and standardized manner to export the complete interface (action/message/parameter/service) of node(s) in a package.
+  This article specifies the ROS 2 Node Definition Language, a simple and standardized manner to export the complete interface (action/message/parameter/service) of node(s) in a package.
 author: >
   [Jérémie Deray](https://github.com/artivis),
   [Kyle Fazzari](https://github.com/kyrofa)
@@ -39,9 +39,7 @@ While it is usually readily available to a developer looking at the code, it can
 It therefore calls for the creation of a standardized way to explicitly define and export this information.
 
 This article defines a high-level abstraction allowing upstream packages to specify the communication requirements of the nodes in the package, such that the final user, be it a developer or a static analysis tool, can benefit from it.
-
 The Node Definition Language (NoDL) specified in the next section is meant to be distributed alongside its associated package, be it in the source code or a generated release packaging format (e.g. debian).
-
 Whether the interface is declared or not is up to the package author and should not prevent the correct execution of any system pre-existing the NoDL.
 
 Similarly, the declared interface may be only partial and allow for the full use of pre-existing systems and the use of dependent systems on the parts covered by the partial interface.
@@ -92,7 +90,7 @@ These assertions results would then be summarized in a logging file for later de
 
 Another example of the usefulness of having a static interface is the ability to create graphical tools for putting a ROS system together.
 
-Yet another example would be an additional feature in `ros2 pkg create` that would allow a developer to hand it an NoDL and have it generate scaffolding for a node with that interface.
+Yet another example would be an additional feature in `ros2 pkg create` that would allow a developer to hand it a NoDL and have it generate scaffolding for a node with that interface.
 
 These examples are only a subset of use-cases made possible by such an interface.
 It's clear that this is useful well beyond security.
@@ -104,123 +102,71 @@ This proposal has a number of potential upsides, but it also has some downsides 
 ### This is only really useful if it gains significant adoption in upstream packages
 
 It's true that, if not all of the packages in one's system have adopted this, its gains are incomplete.
-
 However, it's still useful even if only a subset of the packages adopt it (e.g. one's own packages), which means even without significant upstream adoption it will still be useful to individuals or organizations.
-
 Upstream packages that haven't adopted this simply won't benefit from it.
-
 Also, its usefulness hopefully outweighs the work required to implement it upstream, and it's certainly something that can be contributed by community members given that the interface would be reviewed by the experts in the package.
 
 ### Declared and actual interface can get out of sync
 
 This is certainly a concern: an out-of-date interface is debatably less useful than having no interface at all.
-
 There are a number of possibilities that will help with this issue.
-
 One possibility is to more tightly couple the declared and actual interface by creating a library that consumes the declared interface and creates the corresponding ROS entities.
-
 Another is the fact that, as soon as the node is running, RCL itself (or another `ros2` command) can verify that the actual interface properly corresponds to the declared interface, and can act appropriately.
 
 ## Package interface
 
 How do upstream packages specify their interface requirements?
-
 Through a high-level description of all the actions, parameters, services and topics, provided or required, by each node within the package.
 
-The package interface is defined in a separate [XML][xml_wiki] file with suffix `.nodl.xml`. This XML file is exported to the [ament index][ament_index], either manually in the case of python projects or with a helper CMake macro.
-
+The package interface is defined in a separate [XML][xml_wiki] file with suffix `.nodl.xml`.
+This XML file is exported to the [ament index][ament_index], either manually in the case of python projects or with a helper CMake macro.
 The interface may cover only a subset of nodes in a package, as long as the nodes that _are_ covered are done so completely.
 
 Here is an example NoDL for a package containing two nodes:
 
 {% include_relative ros2_nodl/interface_declaration.xml %}
 
-
-Once an NoDL file is written, it is exported from either `CMakeLists.txt` or `setup.py`.
-
-For CMake based builds, the package [`ament_nodl`](https://github.com/ubuntu-robotics/ament_nodl) will provide a a macro `nodl_export_node_description_file()`. That installs the two relevan
-
-{% include_relative ros2_nodl/package.xml %}
-
-Note that several NoDL files can be exported, allowing for writing an NoDL file per node.
+Once an NoDL file is written, it is exported from either `CMakeLists.txt` or `setup.py` (more details below).
+Note that several NoDL files can be exported, allowing for writing one NoDL file per node if desired.
 
 ### Exporting a NoDL to the Ament Index
 
-Per the design philosophy of the [ament index][ament_index], we install files in two locations. In the case of a package named `Foo`, we export our NoDL file `foo.nodl.xml` into the package share directory, `share/foo/foo.nodl.xml`. We then place a marker file, `share/ament_index/nodl_desc/foo`. This is either empty or contains the relative path to the `foo.nodl.xml` file.
+Per the design philosophy of the [ament index][ament_index], files will be installed in two locations.
+In the case of a package named `Foo`, the NoDL file `foo.nodl.xml` should be placed in the package share directory, `share/foo/foo.nodl.xml`.
+A corresponding marker file, `share/ament_index/nodl_desc/foo`, should be created.
+This is either empty or contains the relative path to the `foo.nodl.xml` file.
 
 #### CMake Macro
 
-For packages using ament_cmake, the package `ament_nodl` provides the macro `nodl_export_node_description_file` which performs the above for you.
+For packages using ament_cmake, the package `ament_nodl` provides the macro `nodl_export_node_description_file` which performs the above.
+
+For a package Foo, containing `foo.nodl.xml`, the following lines are added to `CMakeLists.txt`:
+
+```cmake
+find_package(ament_nodl REQUIRED)
+nodl_export_node_description_file(foo.nodl.xml)
+```
 
 #### setup.py
 
 In the case of setup.py, the above must be done manually alongside the placement of the package's marker in the ament index.
+You can re-use the same empty marker file placed in the package index.
+An example `data_files` argument to `setuptools.setup()` follows:
+
+```python
+    data_files=[
+        ('share/ament_index/resource_index/packages',
+            ['resource/' + package_name]),
+        ('share/ament_index/resource_index/nodl_desc',
+            ['resource/' + package_name]),
+        ('share/' + package_name,
+            ['package.xml', package_name + '.nodl.xml']),
+    ],
+```
 
 ### NoDL Schema
 
-An `.xsd` xml schema is provided alongside the NoDL implementation, version 1 of which is displayed below
-
-```xml
-<?xml version="1.1" encoding="UTF-8" standalone="no"?>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
-
-    <xs:element name="action">
-        <xs:complexType>
-            <xs:attribute name="name" type="xs:string" use="required" />
-            <xs:attribute name="type" type="xs:string" use="required" />
-            <xs:attribute name="server" type="xs:boolean" default="false" />
-            <xs:attribute name="client" type="xs:boolean" default="false" />
-        </xs:complexType>
-    </xs:element>
-
-    <xs:element name="parameter">
-        <xs:complexType>
-            <xs:attribute name="name" type="xs:string" use="required" />
-            <xs:attribute name="type" type="xs:string" use="required" />
-        </xs:complexType>
-    </xs:element>
-
-    <xs:element name="service">
-        <xs:complexType>
-            <xs:attribute name="name" type="xs:string" use="required" />
-            <xs:attribute name="type" type="xs:string" use="required" />
-            <xs:attribute name="server" type="xs:boolean" default="false" />
-            <xs:attribute name="client" type="xs:boolean" default="false" />
-        </xs:complexType>
-    </xs:element>
-
-    <xs:element name="topic">
-        <xs:complexType>
-            <xs:attribute name="name" type="xs:string" use="required" />
-            <xs:attribute name="type" type="xs:string" use="required" />
-            <xs:attribute name="publisher" type="xs:boolean" default="false" />
-            <xs:attribute name="subscription" type="xs:boolean" default="false" />
-        </xs:complexType>
-    </xs:element>
-
-    <xs:element name="node">
-        <xs:complexType>
-            <xs:choice minOccurs="1" maxOccurs="unbounded">
-                <xs:element ref="action" />
-                <xs:element ref="parameter" />
-                <xs:element ref="topic" />
-                <xs:element ref="service" />
-            </xs:choice>
-            <xs:attribute name="name" type="xs:string" use="required" />
-            <xs:attribute name="executable" type="xs:string" use="required" />
-        </xs:complexType>
-    </xs:element>
-
-    <xs:element name="interface">
-        <xs:complexType>
-            <xs:choice maxOccurs="unbounded">
-                <xs:element ref="node"></xs:element>
-            </xs:choice>
-            <xs:attribute name="version" fixed="1" use="required" />
-        </xs:complexType>
-    </xs:element>
-</xs:schema>
-```
+An `.xsd` xml schema is provided alongside the NoDL implementation.
 
 #### `interface`
 
@@ -237,7 +183,7 @@ It is specific to a node as determined by its associated attributes.
 
 Attributes:
 - **name**: The base name of the node.
-- **executable**: The name of the generated executable the node is contained in.
+- **executable**: The name of the generated executable that contains the node.
 
 #### `action`
 
