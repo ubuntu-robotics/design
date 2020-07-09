@@ -89,7 +89,6 @@ Such assertions could include:
 These assertions results would then be summarized in a logging file for later debugging.
 
 Another example of the usefulness of having a static interface is the ability to create graphical tools for putting a ROS system together.
-
 Yet another example would be an additional feature in `ros2 pkg create` that would allow a developer to hand it a NoDL and have it generate scaffolding for a node with that interface.
 
 These examples are only a subset of use-cases made possible by such an interface.
@@ -134,13 +133,13 @@ Note that several NoDL files can be exported, allowing for writing one NoDL file
 Per the design philosophy of the [ament index][ament_index], files will be installed in two locations.
 In the case of a package named `Foo`, the NoDL file `foo.nodl.xml` should be placed in the package share directory, `share/foo/foo.nodl.xml`.
 A corresponding marker file, `share/ament_index/nodl_desc/foo`, should be created.
-This is either empty or contains the relative path to the `foo.nodl.xml` file.
+It is either empty or contains the relative path to the `foo.nodl.xml` file.
 
 #### CMake Macro
 
-For packages using ament_cmake, the package `ament_nodl` provides the macro `nodl_export_node_description_file` which performs the above.
+For packages using ament_cmake, the package `ament_nodl` provides the macro `nodl_export_node_description_file` which performs the export described in [Exporting a NoDL to the Ament Index](#exporting-a-nodl-to-the-ament-index).
 
-For a package Foo, containing `foo.nodl.xml`, the following lines are added to `CMakeLists.txt`:
+For a package `Foo`, containing `foo.nodl.xml`, the following lines are added to `CMakeLists.txt`:
 
 ```cmake
 find_package(ament_nodl REQUIRED)
@@ -149,8 +148,8 @@ nodl_export_node_description_file(foo.nodl.xml)
 
 #### setup.py
 
-In the case of setup.py, the above must be done manually alongside the placement of the package's marker in the ament index.
-You can re-use the same empty marker file placed in the package index.
+In the case of setup.py, placement of the NoDL file and marker in the index must be done manually alongside the placement of the package's marker in the ament index.
+One can re-use the same empty marker file placed in the package index.
 An example `data_files` argument to `setuptools.setup()` follows:
 
 ```python
