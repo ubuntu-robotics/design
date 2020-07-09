@@ -41,7 +41,6 @@ It therefore calls for the creation of a standardized way to explicitly define a
 This article defines a high-level abstraction allowing upstream packages to specify the communication requirements of the nodes in the package, such that the final user, be it a developer or a static analysis tool, can benefit from it.
 The Node Definition Language (NoDL) specified in the next section is meant to be distributed alongside its associated package, be it in the source code or a generated release packaging format (e.g. debian).
 Whether the interface is declared or not is up to the package author and should not prevent the correct execution of any system pre-existing the NoDL.
-
 Similarly, the declared interface may be only partial and allow for the full use of pre-existing systems and the use of dependent systems on the parts covered by the partial interface.
 
 ## Motivation
@@ -74,9 +73,7 @@ If ROS 2 provided a way for upstream package authors to specify the interface re
 Outside of security, there are several fascinating possibilities unlocked by having such an interface.
 
 For example, consider how this could impact [ROS 2 launch][launch_ros].
-
 Benefiting from the declared interface(s), it would be able to execute many kind of static assertions (i.e. at launch-time, before running anything) upon the whole system to be launched.
-
 Such assertions could include:
 - Check for duplicates.
 - Check for multiple publishers on a single topic.
@@ -150,7 +147,7 @@ nodl_export_node_description_file(foo.nodl.xml)
 
 In the case of setup.py, placement of the NoDL file and marker in the index must be done manually alongside the placement of the package's marker in the ament index.
 One can re-use the same empty marker file placed in the package index.
-An example `data_files` argument to `setuptools.setup()` follows:
+An example `data_files` argument to `setuptools.setup()` in `setup.py` follows:
 
 ```python
     data_files=[
@@ -166,6 +163,9 @@ An example `data_files` argument to `setuptools.setup()` follows:
 ### NoDL Schema
 
 An `.xsd` xml schema is provided alongside the NoDL implementation.
+This can be used to programmatically validate the NoDL's `.xml` document.
+There are some semantics that cannot be expressed in this schema, so the the `.xsd` is not authoritative.
+Rather, it is a heuristic, and the [NoDL reference implementation][nodl-reference] can reject a document that does not conform to other requirements.
 
 #### `interface`
 
@@ -238,3 +238,4 @@ Valid values are "true" or "false". Defaults to "false".
 [launch_ros]: https://github.com/ros2/launch_ros
 [xml_wiki]: https://en.wikipedia.org/wiki/xml
 [ament_index]: https://github.com/ament/ament_cmake/blob/master/ament_cmake_core/doc/resource_index.md#integration-with-other-systems
+[nodl_reference]: https://github.com/ubuntu-robotics/nodl
